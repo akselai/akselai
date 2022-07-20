@@ -1,7 +1,3 @@
-html, body {
-    background-color: magenta;
-}
-
-p {
-    font-family: Comic Sans MS;
+h1, h2, p, a {
+    font-family: "Comic Sans MS", "Comic Sans", cursive;
 }
