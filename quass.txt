@@ -1,3 +1,4 @@
+GAUSS-KRONROD QUADRATURE
 0.8888888888888888888889
 0.7745966692414833770359
 0.5555555555555555555556
@@ -105,8 +106,8 @@ function quass3(f, a, b) {
     var m = 0;
     b = (b - a)/2;
     m += f(a + b) * 0.88...;
-    m+= f(a + b + b * 0.77...) * 0.55...;
-    m+= f(a + b + b * -0.77...) * 0.55...;
+    m += f(a + b + b * 0.77...) * 0.55...;
+    m += f(a + b + b * -0.77...) * 0.55...;
     return m * b;
 }
 data from https://keisan.casio.com/exec/system/1289382036

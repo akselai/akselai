@@ -1,11 +1,18 @@
 var k1;
-var g3d, g2dprojection;
+var g3d, g2dprojection, multigraph;
+
+var quassCoef = [];
+
+function preload() {
+  quassCoef = loadStrings("quass.txt");
+}
 
 function setup() {
-  k1 = new Knot(8);
-  createCanvas(1200, 600);
+  for(let i = 0; i < quassCoef.length; i++) {quassCoef[i] = parseFloat(quassCoef[i]);}
+  
+  k1 = new Knot(11);
+  createCanvas(1200, 850);
   g3d = createGraphics(600, 600, WEBGL);
-  g2dprojection = createGraphics(600, 600);
   g3d.setAttributes('antialias', true);
   g3d.setAttributes('alpha', true);
   g3d.setAttributes('depth', false); // don't set this to true!!!!!!!!!!
@@ -16,8 +23,10 @@ function setup() {
   g3d.camera(200.0, 0.0, 0.0, // eyeX, eyeY, eyeZ
     0.0, 0.0, 0.0, // centerX, centerY, centerZ
     0.0, 1.0, 0.0);
-  g3d.frameRate(60);
   // g3d.debugMode();
+  
+  g2dprojection = createGraphics(600, 600);
+  multigraph = createGraphics(1200, 250);
 }
 
 var cameraRotateX = 0;
@@ -26,7 +35,7 @@ var cameraSensitivity = 2*3.1415926535897932 / 600;
 
 function draw() {
   let rate = 3;
-  let step = 0.025;
+  let step = 0.02;
   
   let camera_dX = mouseX - pmouseX;
   let camera_dY = mouseY - pmouseY;
@@ -44,17 +53,39 @@ function draw() {
   for (let i = 0; i < rate; i++) {
     k1.flow(step);
   }
+  
   g3d.rotateY(-cameraRotateX);
   g3d.rotateZ(-cameraRotateY);
-  image(g3d, 600, 0);
+  
   g2dprojection.background(255);
-  projectKnot(); 
+  projectKnot();
+  
+  multigraph.background(255);
+  multigraph.stroke(255, 0, 0);
+  graphEnergy(k1);
+  
+  image(g3d, 600, 0);
   image(g2dprojection, 0, 0);
-  // if (millis() > 100) {debugger;}
+  image(multigraph, 0, 600);
+  
+      console.log(k1.history.energy[k1.history.energy.length-1]);
 }
 
-{
-  // ???????
+function graphEnergy(k) {
+  multigraph.strokeWeight(2);
+  let h = k.history.energy;
+  let scaleH = 1/5.0;
+  if (h.length > 1) {
+    for (let i = 1; i < h.length; i++) {
+      let a = h[i-1];
+      let b = h[i];
+      multigraph.line(i-1, 250-a*scaleH, i, 250-b*scaleH);
+    }
+  }
+  multigraph.stroke(240, 0, 0, 50);
+  multigraph.line(0, 250-189.28*scaleH, 1200, 250-189.28*scaleH);
+  multigraph.stroke(0, 240, 0, 50);
+  multigraph.line(0, 250-33.141*scaleH, 1200, 250-33.141*scaleH);
 }
 
 function drawAxes(scale) {
@@ -98,14 +129,15 @@ function projectKnot() { // find the projection of a point onto a plane
   let projNodes = [];
   for (let i = 0; i < n; i++) {
     let a = k1.system.nodes[i];
-    a = orthoSync(a);
+    a = orthoSync(a); // also has x coordinate
     let aX = a.z * -200 + 300;
     let aY = a.y * 200 + 300;
-    append(projNodes, createVector(aX, aY));
+    let aZ = a.x;
+    append(projNodes, createVector(aX, aY, aZ));
     // g2dprojection.text(i, aX, aY);
   }
-  g2dprojection.stroke(0);
   
+  g2dprojection.stroke(0);
   let crossingInf = createArray(n, n); // crossing information
   for (let i = 0; i < n; i++) {
     let a = projNodes[i];
@@ -115,9 +147,9 @@ function projectKnot() { // find the projection of a point onto a plane
       let d = projNodes[(j+1)%n];
       let inter = intersect2d(a, b, c, d);
       if(inter.intersect) {
-        let aVect = p5.Vector.lerp(k1.system.nodes[i], k1.system.nodes[(i+1)%n], inter.lerp);
-        let bVect = p5.Vector.lerp(k1.system.nodes[j], k1.system.nodes[(j+1)%n], inter.lerp2);
-        if (aVect.x > bVect.x) {
+        let aVect = p5.Vector.lerp(projNodes[i], projNodes[(i+1)%n], inter.lerp);
+        let bVect = p5.Vector.lerp(projNodes[j], projNodes[(j+1)%n], inter.lerp2);
+        if (aVect.z > bVect.z) {
           crossingInf[i][j] = {crossing: true, orientation: false, cut: inter.lerp2};
           crossingInf[j][i] = {crossing: true, orientation: true, cut: inter.lerp};
         } else {
@@ -192,7 +224,11 @@ function intersection(a, b, c, d) { // one sided implementation, only checks for
   return {intersect: (h > 0 && h < 1), lerp: h};
 } // https://stackoverflow.com/a/563275
 
-function intersect2d(a, b, c, d) { // symmetric implementation, checks for the g in (cd, ab) too
+function intersect2d(a_, b_, c_, d_) { // symmetric implementation, checks for the g in (cd, ab) too
+  a = createVector(a_.x, a_.y);
+  b = createVector(b_.x, b_.y);
+  c = createVector(c_.x, c_.y);
+  d = createVector(d_.x, d_.y); // 2d-ify
   let x = intersection(a, b, c, d);
   let y = intersection(c, d, a, b);
   return {intersect: x.intersect && y.intersect, lerp: x.lerp, lerp2: y.lerp};
@@ -212,4 +248,5 @@ function keyPressed() {
   if (keyCode === 32) {
     k1.drawForces = !k1.drawForces;
   }
+  debugger;
 }

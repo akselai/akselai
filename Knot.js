@@ -1,31 +1,22 @@
 class Knot {
   constructor(numberOfNodes) {
-    /* params
-    float ck = 1; // coefficient of repulsion between segments, so they don't unknot
-    float cr = 2; // coefficient of restoring to unit length tendency, so they don't explode to infinity
-    float mass = 1; // per unit length
-    float damping = 0.99;
-    */
-    
     this.system = {nodes: [], velocities: [], forces: []};
-    this.params = {ck: 0.1, cr: 1.0, damping: 0.4};
+    this.params = {ck: 0.1, cr: 1, damping: 0.4};
+    this.history = {frames: 1200, energy: []};
+    
     for (let i = 0; i < numberOfNodes; i++) {
       let t = TWO_PI / numberOfNodes * i;
       //append(this.system.nodes, createVector((2 + cos(2*t)) * cos(3*t), (2 + cos(2*t)) * sin(3*t), sin(4*t)));
       append(this.system.nodes, createVector((sin(t) + 2*sin(2*t))/4, (cos(t) - 2*cos(2*t))/4, -sin(3*t)/4));
       //append(this.system.nodes, createVector(0, sin(t), cos(t)));
       //append(this.system.nodes, p5.Vector.random3D().mult(1));
+      this.system.nodes[i].add(createVector(random(-0.3, 0.3), random(-0.3, 0.3), random(-0.3, 0.3)));
       append(this.system.velocities, createVector(0, 0, 0));
       append(this.system.forces, createVector(0, 0, 0));
     }
-    /*
-    append(this.system.nodes, createVector(0, -1, -1));
-    append(this.system.nodes, createVector(0, 1, -1));
-    append(this.system.nodes, createVector(sin(millis() / 1000), cos(millis() / 1000), 1));
-    append(this.system.nodes, createVector(-sin(millis() / 1000), -cos(millis() / 1000), 1));
-    */
     
     this.drawForces = false;
+    this.showNodeLabels = true;
   }
   
   display(scale) {
@@ -38,12 +29,13 @@ class Knot {
         scale * tail.x, scale * tail.y, scale * tail.z);
       g3d.stroke(50, 210, 210);
       g3d.fill(50, 255, 230);
-      if (this.drawForces) {drawArrow(this.system.nodes[i], p5.Vector.mult(this.system.forces[i], 1), scale);}
+      if (this.drawForces) {drawArrow(head, p5.Vector.mult(this.system.forces[i], 1), scale);}
     }
   }
   
   flow(dt) { // rk4
     let active = true;
+    this.measureSegLengths();
     this.recenter();
     if (active) {
       /* pseudocode for runge-kutta
@@ -59,6 +51,9 @@ class Knot {
       let fD = totalDiff(addLinear(this.system, scaleLinear(fC, dt)), this.params);
       this.system = addLinear(this.system, scaleLinear(addLinear(addLinear(addLinear(fA, scaleLinear(fB, 2)), scaleLinear(fC, 2)), fD), dt/6));
     }
+    
+    append(this.history.energy, this.moebiusEnergy()); // update knot frames (as a movie)
+    while(this.history.energy.length > this.history.frames) {this.history.energy.shift();}
   }
   
   recenter() {
@@ -84,6 +79,32 @@ class Knot {
     for (let i = 0; i < n; i++) {
       this.system.nodes[i].sub(createVector(centerX, centerY, centerZ));
     }
+  }
+  
+  measureSegLengths() {
+    this.cumSegLengths = [];
+    let ns = this.system.nodes;
+    let x = 0;
+    for (let i = 0; i < ns.length; i++) {
+      x += p5.Vector.dist(ns[i], ns[(i+1)%(ns.length)]);
+      append(this.cumSegLengths, x);
+    }
+  }
+  
+  moebiusEnergy() {
+    let result = 0;
+    let ns = this.system.nodes;
+    let n = ns.length;
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        if (i != j && !equimod(i, j+1, n) && !equimod(i+1, j, n)) { // i not next to j
+          result += p5.Vector.dist(ns[i], ns[(i+1)%n]) *
+                    p5.Vector.dist(ns[j], ns[(j+1)%n]) *
+                    pow(segmentDistance(ns[i], ns[(i+1)%n], ns[j], ns[(j+1)%n]), -2);
+        }
+      }
+    }
+    return result;
   }
 }
 
@@ -128,7 +149,7 @@ function totalRepulsion(nodes, ck) {
   }
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
-      if (i != j && !equimod(i, j+1, n) && !equimod(i+1, j, n)) {
+      if (i != j && !equimod(i, j+1, n) && !equimod(i+1, j, n)) { // i not next to j
       //if (i == 0 && j == 2) { // debug
         let a = nodes[i];
         let b = nodes[mod(i+1, n)];
@@ -141,9 +162,9 @@ function totalRepulsion(nodes, ck) {
         
         let l_ = (lerp) => p5.Vector.mult(p5.Vector.normalize(rest(lerp)), pow(res(lerp).mag, -2) * (1-lerp) * ck);
         let r_ = (lerp) => p5.Vector.mult(p5.Vector.normalize(rest(lerp)), pow(res(lerp).mag, -2) * lerp * ck);
-        
-        let leftTorque = quass5(l_, 0, 1); // these lambda expressions look so spaghetti because i am bad at js lambdas 
-        let rightTorque = quass5(r_, 0, 1);
+                
+        let leftTorque = quassVector(l_, 0, 1, 5); // these lambda expressions look so spaghetti because i am bad at js lambdas 
+        let rightTorque = quassVector(r_, 0, 1, 5);
         /*
         if (i == 0 && j == 2) {
           drawArrow(_, leftTorque, 40);
@@ -202,30 +223,106 @@ function equimod(x, y, m) {
   return mod(x, m) === mod(y, m);
 }
 
-function quass5(f, a, b) { // gaussian quadrature, 5 points
+function quassVector(f, a, b, order) { // gaussian quadrature for vector valued functions
   let m = createVector(0, 0, 0);
   b = (b - a) / 2;
-  m.add(f(a + b).mult(0.6222222222222222222222));
-  m.add(f(a + b + b * 0.9258200997725514615666).mult(0.197979797979797979798));
-  m.add(f(a + b + b * -0.9258200997725514615666).mult(0.197979797979797979798));
-  m.add(f(a + b + b * 0.5773502691896257645092).mult(0.4909090909090909090909));
-  m.add(f(a + b + b * -0.5773502691896257645092).mult(0.4909090909090909090909));
+  let w = quassCoef[order*order];
+  m.add(f(a + b).mult(w));
+  for (let i = order*order + 1; i < (order + 1)*(order + 1); i+=2) {
+    let x_ = quassCoef[i];
+    let w_ = quassCoef[i+1];
+    m.add(f(a + b + b * x_).mult(w_));
+    m.add(f(a + b - b * x_).mult(w_));
+  }
   return m.mult(b);
 }
 
-function quass11(f, a, b) { // gaussian quadrature, 11 points
-  let m = createVector(0, 0, 0);
+function quass(f, a, b, order) { // gaussian quadrature
+  let m = 0;
   b = (b - a) / 2;
-  m.add(f(a + b).mult(0.2829874178574912132043));
-  m.add(f(a + b + b * 0.9840853600948424644962).mult(0.0425820367510818328645));
-  m.add(f(a + b + b * -0.9840853600948424644962).mult(0.0425820367510818328645));
-  m.add(f(a + b + b * 0.9061798459386639927976).mult(0.1152333166224733940246));
-  m.add(f(a + b + b * -0.9061798459386639927976).mult(0.1152333166224733940246));
-  m.add(f(a + b + b * 0.7541667265708492204408).mult(0.1868007965564926574678));
-  m.add(f(a + b + b * -0.7541667265708492204408).mult(0.1868007965564926574678));
-  m.add(f(a + b + b * 0.5384693101056830910363).mult(0.2410403392286475866999));
-  m.add(f(a + b + b * -0.5384693101056830910363).mult(0.2410403392286475866999));
-  m.add(f(a + b + b * 0.2796304131617831934135).mult(0.2728498019125589223410));
-  m.add(f(a + b + b * -0.2796304131617831934135).mult(0.2728498019125589223410));
-  return m.mult(b);
+  let w = quassCoef[order*order];
+  m += f(a + b) * w;
+  for (let i = order*order + 1; i < (order + 1)*(order + 1); i+=2) {
+    let x_ = quassCoef[i];
+    let w_ = quassCoef[i+1];
+    m += f(a + b + b * x_) * w_;
+    m += f(a + b - b * x_) * w_;
+  }
+  
+  return m * b;
+}
+
+function quass2(f, a1, b1, a2, b2, order) { // gaussian quadrature, double integral
+  let f_ = (x) => ((y) => f(x, y)); // fix x, integrate over y
+  let I = (x) => quass(f_(x), a2(x), b2(x), order); // inner integral's bound might depend on x, that's why a2 and b2 are also lambdas
+  let result = quass(I, a1, b1, order);
+  return result;
+}
+
+function segmentDistance(a1, a2, b1, b2) {
+  let u = p5.Vector.sub(a2, a1);
+  let v = p5.Vector.sub(b2, b1);
+  let w = p5.Vector.sub(a1, b1);
+  let a = p5.Vector.dot(u, u);
+  let b = p5.Vector.dot(u, v);
+  let c = p5.Vector.dot(v, v);
+  let d = p5.Vector.dot(u, w);
+  let e = p5.Vector.dot(v, w);
+  let D = a * c - b * b;
+  let sc, sN, sD = D;
+  let tc, tN, tD = D;
+  let epsilon = 0.0001;
+  if (D < epsilon)
+  {
+    sN = 0;
+    sD = 1;
+    tN = e;
+    tD = c;
+  } else {
+    sN = (b * e - c * d);
+    tN = (a * e - b * d);
+    if (sN < 0) {
+      sN = 0;
+      tN = e;
+      tD = c;
+    } else if (sN > sD) {
+      sN = sD;
+      tN = e + b;
+      tD = c;
+    }
+  }
+  if (tN < 0) {
+    tN = 0;
+    if (-d < 0) {
+      sN = 0;
+    } else if (-d > a) {
+      sN = sD;
+    } else {
+      sN = -d;
+      sD = a;
+    }
+  } else if (tN > tD) {
+    tN = tD;
+    if ((-d + b) < 0) {
+      sN = 0;
+    } else if ((-d + b) > a) {
+      sN = sD;
+    } else {
+      sN = (-d + b);
+      sD = a;
+    }
+  }
+  if (abs(sN) < epsilon) {
+    sc = 0;
+  } else {
+    sc = sN / sD;
+  }
+  if (abs(tN) < epsilon) {
+    tc = 0;
+  } else {
+    tc = tN / tD;
+  }
+  let dP = p5.Vector.add(w, p5.Vector.sub(p5.Vector.mult(u, sc), p5.Vector.mult(v, tc)));
+  let distance = sqrt(p5.Vector.dot(dP, dP));
+  return distance;
 }
