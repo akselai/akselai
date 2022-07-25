@@ -47,8 +47,9 @@ function slideDigit(mag10) {
     let parallel = "";
     for (let j = 0; j < logo[i].length; j++) {
       if (logo[i].charAt(j) == ' ') {
-        parallel += (parallel.length > 78 ? '' : '0');
-        bufferS += (parallel.length > 78 ? '' : '0');
+        let str = (parallel.length > 78 ? '' : '0'); 
+        parallel += str;
+        bufferS += str;
       } else {
         let d = round(random(-0.4999, pow(10, mag10)-0.5001)) + '';
         parallel += d;
