@@ -34,7 +34,6 @@ function draw() {
   p.style('text-align', 'center');
   p.style('font-family', 'Courier New');
   p.style('font-size', '20px');
-  p.position(0, 0);
 }
 
 let backDigit = 0;
