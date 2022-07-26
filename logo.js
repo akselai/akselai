@@ -62,7 +62,7 @@ function slideDigit(mag10) {
     let parallel = "";
     for (let j = 0; j < logo[i].length; j++) {
       if (logo[i].charAt(j) == ' ') {
-        let str = (parallel.length > 78-1 ? '' : '0'); 
+        let str = (parallel.length > 78 ? '' : '0'); 
         parallel += str;
         bufferS += str;
       } else {
