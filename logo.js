@@ -1,7 +1,22 @@
-let logo = [];
+var logo;
 
 function preload() {
-  logo = loadStrings("logo.txt");
+  logo = [
+    "             kk                                   llll                    ii  ",
+    "             kk                                   llll                    ii  ",
+    "             kk                                     ll                        ",
+    "             kk                                     ll                        ",
+    "  aaaaaa     kk    kk     ssssssss     eeeeee       ll       aaaaaa     iiii  ",
+    "  aaaaaaa    kk   kkk    sssssssss    eeeeeeee      ll       aaaaaaa    iiii  ",
+    "       aaa   kk  kkk    sss          eee    eee     ll            aaa     ii  ",
+    "        aa   kk kkk     sss          ee      ee     ll             aa     ii  ",
+    "  aaaaaaaa   kkkkk       sssssss     eeeeeeeeee     ll       aaaaaaaa     ii  ",
+    " aaaaaaaaa   kkkkk        sssssss    eeeeeeeeee     ll      aaaaaaaaa     ii  ",
+    "aaa     aa   kk kkk            sss   ee             ll     aaa     aa     ii  ",
+    "aaa     aa   kk  kkk           sss   eee            ll     aaa     aa     ii  ",
+    " aaaaaaaaa   kk   kkk   sssssssss     eeeeeee     llllll    aaaaaaaaa   iiiiii",
+    "  aaaaaaaa   kk    kk   ssssssss       eeeeee     llllll     aaaaaaaa   iiiiii",
+  ];
 }
 
 var p;
