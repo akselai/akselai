@@ -30,7 +30,7 @@ function setup() {
 
 function draw() {
   let buffer = (millis()%7000<3500?slideDigit(sin(millis()/300)+1):noVariation());
-  p.html(buffer);
+  p.html("<span style=\"text-align: center;\">" + buffer + "</span>");
   p.style('font-family', 'Courier New');
   p.style('font-size', '20px');
   p.position(0, 0);
