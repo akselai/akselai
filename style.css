@@ -1,3 +1,42 @@
-h1, h2, p, a {
-    font-family: "Courier New";
+@font-face { font-family: cfontb; font-weight: bold; src: url('cmunsx.ttf');}
+@font-face { font-family: cfontl; font-weight: light; src: url('cmunss.ttf'); }
+
+h1, p {
+    font-family: cfontb;
+    text-align: center;
+}
+
+h2, h3 {
+    font-family: cfontl;
+    text-align: center;
+}
+
+.above {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 1.5em;
+  }
+  .above .below {
+    position: absolute;
+    width: 120%;
+    left: 0;
+    right: 0;
+    top: 80%;
+    font-family: cfontl;
+    font-size: 0.4em;
+    text-align: left;
+}
+
+.yay {
+    position: relative;
+    width: 100%;
+    font-size: 0.8em;
+    left: 0;
+    margin-bottom: -3em;
+}
+
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 }
